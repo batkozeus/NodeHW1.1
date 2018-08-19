@@ -3,8 +3,8 @@ const express = require("express");
 const app = express();
 const config = require("./config/development");
 const bodyParser = require('body-parser');
-const _ = require('lodash');
 const slug = require('slug');
+const {merge} = require('lodash');
 
 app.use(bodyParser.json()); // for parsing application/json
 app.use(bodyParser.urlencoded({ extended: true })); // for parsing application/x-www-form-urlencoded
@@ -101,14 +101,14 @@ const deleteBookTitle = (req, res, next) => {
     const index = req.params.index;
     const title = req.params.title;
     const changedBookList = USERS[index].books.filter(book =>
-        slug(book.title) !== title
+        slug(book.title).toLowerCase() !== title.toLowerCase()
     );
     USERS[index].books = changedBookList;
     req.books = USERS[index].books;
     next();
 };
 
-const changeBookTitle = (req, res, next) => {
+const changeBookTitleWithoutLodash = (req, res, next) => {
     const index = req.params.index;
     const title = req.params.title;
     const newBook = req.body;
@@ -116,7 +116,19 @@ const changeBookTitle = (req, res, next) => {
         slug(oldBook.title) == title ? newBook : oldBook
     );
     USERS[index].books = changedBookList;
-    req.books = changedBookList;
+    req.books = USERS[index].books;
+    next();
+};
+
+const changeBookTitleWithLodash = (req, res, next) => {
+    const index = req.params.index;
+    const title = req.params.title;
+    const newBook = req.body;
+    const changedBook = USERS[index].books.find((oldBook) => {
+        return slug(oldBook.title).toLowerCase() === title.toLowerCase();
+    });
+    merge(changedBook, newBook);
+    req.books = changedBook;
     next();
 };
 
@@ -134,7 +146,7 @@ app.post("/users/:index/books", addBook, sendBooks);
 
 // *
 app.get("/users/:index/books/:title", getBooksTitle, sendBooks);
-app.put("/users/:index/books/:title", changeBookTitle, sendBooks);
+app.put("/users/:index/books/:title", changeBookTitleWithLodash, sendBooks);
 app.delete("/users/:index/books/:title", deleteBookTitle, sendBooks);
 
 // app.post("/users/")
